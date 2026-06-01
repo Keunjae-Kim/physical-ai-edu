@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>micro:bit AI Connect</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.4.0/dist/speech-commands.min.js"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Segoe UI',Arial,sans-serif;overflow-x:hidden}
+
+/* ── Views ── */
+.view{display:none;min-height:100vh}
+.view.active{display:flex}
+
+/* ══════════════════════════════════
+   HOME
+══════════════════════════════════ */
+#vHome{
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  background:#7ec8e3;
+  padding:2.5rem 1.5rem;
+  min-height:100vh;
+}
+.home-card{
+  background:white;
+  border-radius:24px;
+  border:3px solid #111;
+  box-shadow:6px 6px 0 #111;
+  padding:2.5rem 2.8rem;
+  max-width:660px;
+  width:100%;
+}
+.home-card h1{
+  font-size:2rem;font-weight:900;color:#111;
+  margin-bottom:1.1rem;letter-spacing:-0.5px;
+}
+.home-card .intro{
+  font-size:.97rem;line-height:1.75;color:#333;
+  margin-bottom:2rem;font-weight:500;
+}
+.pill-btn{
+  display:block;width:100%;
+  background:white;color:#111;
+  border:2.5px solid #111;
+  border-radius:999px;
+  padding:1rem 1.5rem;
+  font-size:1.05rem;font-weight:800;
+  cursor:pointer;margin-bottom:.9rem;
+  box-shadow:0 5px 0 #111;
+  text-align:center;text-decoration:none;
+  transition:box-shadow .1s,transform .1s;
+}
+.pill-btn:hover{box-shadow:0 2px 0 #111;transform:translateY(3px)}
+.pill-btn:active{box-shadow:0 1px 0 #111;transform:translateY(4px)}
+.pill-btn.accent{background:#f5d165;border-color:#111}
+.home-hint{
+  text-align:center;font-size:.85rem;font-weight:700;
+  color:#444;margin-top:.4rem;
+}
+
+/* ══════════════════════════════════
+   MAKECODE MODAL
+══════════════════════════════════ */
+.overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.5);z-index:999;
+  align-items:center;justify-content:center;padding:1rem;
+}
+.overlay.open{display:flex}
+.modal{
+  background:white;border-radius:18px;border:2.5px solid #111;
+  box-shadow:5px 5px 0 #111;
+  padding:1.8rem;max-width:700px;width:100%;
+  max-height:88vh;overflow-y:auto;position:relative;
+}
+.modal h2{font-size:1.25rem;font-weight:900;margin-bottom:.6rem}
+.modal-x{
+  position:absolute;top:1rem;right:1rem;
+  background:#f1f5f9;border:none;border-radius:50%;
+  width:30px;height:30px;cursor:pointer;font-size:1rem;
+  display:flex;align-items:center;justify-content:center;
+}
+.modal-x:hover{background:#e2e8f0}
+.mc-warn{
+  background:#fffbeb;border:1.5px solid #fbbf24;border-radius:8px;
+  padding:.8rem 1rem;font-size:.83rem;color:#78350f;
+  margin-bottom:.9rem;line-height:1.6;
+}
+.code-box{
+  position:relative;background:#1e293b;border-radius:10px;
+  padding:1rem;overflow-x:auto;
+}
+.code-box pre{
+  font-family:Consolas,'Courier New',monospace;
+  font-size:.78rem;line-height:1.7;color:#e2e8f0;white-space:pre;
+}
+.copy-btn{
+  position:absolute;top:9px;right:9px;
+  background:#334155;color:#94a3b8;
+  border:1px solid #475569;border-radius:6px;
+  padding:3px 9px;font-size:.73rem;font-weight:700;cursor:pointer;
+}
+.copy-btn:hover{background:#475569;color:white}
+.mc-open{
+  display:inline-block;margin-top:.9rem;
+  background:#4f46e5;color:white;border:none;border-radius:8px;
+  padding:8px 16px;font-size:.88rem;font-weight:700;
+  cursor:pointer;text-decoration:none;
+}
+.mc-open:hover{background:#4338ca}
+
+/* ══════════════════════════════════
+   SETUP
+══════════════════════════════════ */
+#vSetup{flex-direction:row}
+.setup-l{
+  flex:1;background:#e8a020;padding:2.8rem 2.5rem;
+  min-height:100vh;
+}
+.setup-l h2{font-size:2rem;font-weight:900;color:#111;margin-bottom:1rem}
+.setup-l p{font-size:.95rem;color:#222;line-height:1.65;margin-bottom:1.2rem;font-weight:500}
+.tm-link{
+  display:block;background:white;color:#111;
+  border:2.5px solid #111;border-radius:999px;
+  padding:.8rem 1.2rem;font-size:.95rem;font-weight:800;
+  text-align:center;text-decoration:none;cursor:pointer;
+  box-shadow:0 4px 0 #111;margin-bottom:1.2rem;
+  transition:box-shadow .1s,transform .1s;
+}
+.tm-link:hover{box-shadow:0 2px 0 #111;transform:translateY(2px)}
+.steps-box{
+  background:rgba(255,255,255,.28);border-radius:12px;
+  padding:1.1rem 1.3rem;
+}
+.steps-box h3{font-size:.95rem;font-weight:800;color:#111;margin-bottom:.6rem}
+.steps-box ol{padding-left:1.2rem}
+.steps-box li{font-size:.88rem;color:#111;margin-bottom:.4rem;line-height:1.5;font-weight:600}
+.setup-r{
+  flex:1;background:#f5f2ed;
+  display:flex;flex-direction:column;justify-content:center;
+  padding:2.8rem 3rem;min-height:100vh;
+}
+.setup-r h3{font-size:1.1rem;font-weight:900;color:#111;margin-bottom:1.1rem}
+.sf{margin-bottom:1.2rem}
+.sf label{display:block;font-size:.88rem;font-weight:700;color:#444;margin-bottom:.45rem}
+.sf input[type=text]{
+  width:100%;padding:11px 14px;
+  border:2px solid #c8a050;border-radius:8px;
+  font-size:.93rem;background:white;color:#111;
+  transition:border-color .18s;
+}
+.sf input[type=text]:focus{outline:none;border-color:#e8a020}
+.sf select{
+  width:100%;padding:9px 12px;
+  border:2px solid #c8a050;border-radius:8px;
+  font-size:.9rem;background:white;color:#111;cursor:pointer;
+}
+.sf select:focus{outline:none;border-color:#e8a020}
+.setup-row{display:flex;align-items:center;gap:1rem;margin-bottom:1rem}
+.setup-row label{font-size:.88rem;font-weight:700;color:#444;min-width:115px}
+.setup-row select{
+  flex:1;padding:9px 12px;
+  border:2px solid #c8a050;border-radius:8px;
+  font-size:.9rem;background:white;color:#111;
+}
+.ready-btn{
+  display:block;margin-left:auto;
+  background:white;color:#111;border:2.5px solid #111;
+  border-radius:999px;padding:.95rem 2.2rem;
+  font-size:1.05rem;font-weight:900;cursor:pointer;
+  box-shadow:0 5px 0 #111;
+  transition:box-shadow .1s,transform .1s;
+}
+.ready-btn:hover{box-shadow:0 2px 0 #111;transform:translateY(3px)}
+.err-box{
+  background:#fee2e2;color:#991b1b;border-radius:8px;
+  padding:9px 13px;font-size:.83rem;font-weight:600;
+  margin-top:.65rem;display:none;
+}
+@media(max-width:680px){
+  #vSetup{flex-direction:column}
+  .setup-l,.setup-r{min-height:auto}
+}
+
+/* ══════════════════════════════════
+   RUNNING PAGE
+══════════════════════════════════ */
+#vRun{flex-direction:column;background:#f5f2ed;min-height:100vh}
+
+/* Nav bar */
+.run-nav{
+  display:flex;align-items:center;justify-content:flex-end;
+  gap:.6rem;padding:.8rem 1.4rem;
+  background:white;border-bottom:2px solid #e2e8f0;
+}
+.nav-serial{
+  border:2px solid #111;border-radius:999px;
+  padding:.45rem 1.1rem;font-size:.82rem;font-weight:800;
+  cursor:pointer;background:white;transition:all .15s;
+}
+.nav-serial:hover{background:#f8f8f8}
+.nav-serial.ok{background:#d1fae5;border-color:#059669;color:#065f46}
+.nav-icon{
+  width:36px;height:36px;border-radius:50%;
+  background:#f5d165;border:2px solid #111;
+  cursor:pointer;font-size:1rem;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s;
+}
+.nav-icon:hover{background:#e8c040}
+
+/* Body */
+.run-body{
+  display:flex;flex:1;gap:0;
+  padding:1.2rem 1.4rem;
+}
+
+/* Left panel */
+.run-left{
+  width:40%;min-width:270px;
+  padding-right:1.3rem;
+  display:flex;flex-direction:column;
+}
+.model-lbl{
+  font-size:2.4rem;font-weight:900;color:#111;
+  line-height:1.05;margin-bottom:.7rem;
+  letter-spacing:-1px;
+}
+.model-desc{
+  font-size:.85rem;color:#555;line-height:1.6;
+  margin-bottom:1rem;font-weight:500;
+}
+
+/* Results card */
+.results-card{
+  background:white;border:2px solid #ddd;
+  border-radius:16px;padding:1.2rem 1.3rem;
+  flex:1;min-height:0;
+}
+.results-title{
+  font-size:1.55rem;font-weight:900;color:#111;
+  margin-bottom:1rem;
+}
+.class-row{
+  display:flex;align-items:center;
+  gap:.7rem;margin-bottom:.4rem;
+}
+.class-num{
+  font-size:1.15rem;font-weight:900;
+  color:#e8873a;min-width:18px;flex-shrink:0;
+}
+.bar-wrap{flex:1;position:relative}
+.bar-track{
+  height:44px;background:#ddd6b0;border-radius:9px;
+  overflow:hidden;position:relative;
+}
+.bar-fill{
+  position:absolute;left:0;top:0;bottom:0;
+  border-radius:9px;width:0%;
+  transition:width .2s ease-out;
+  display:flex;align-items:center;justify-content:flex-end;
+  padding-right:10px;
+}
+.bar-fill.win{background:#3dba8c}
+.bar-fill.lose{background:#c0b07a}
+.bar-pct{
+  font-size:.92rem;font-weight:800;color:white;
+  white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.25);
+  pointer-events:none;
+}
+.bar-name{
+  font-size:.7rem;font-weight:700;color:#888;
+  margin-top:2px;margin-bottom:.55rem;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  max-width:100%;
+  padding-left:calc(18px + .7rem);
+}
+.chk{
+  font-size:1.4rem;color:#3dba8c;font-weight:900;
+  min-width:24px;text-align:center;
+  opacity:0;transition:opacity .2s;
+}
+.chk.on{opacity:1}
+
+/* Buttons under card */
+.reset-btn{
+  display:block;width:100%;
+  background:white;color:#444;
+  border:2px solid #333;border-radius:999px;
+  padding:.75rem;font-size:.9rem;font-weight:700;
+  cursor:pointer;margin-top:.8rem;
+  transition:background .15s;
+}
+.reset-btn:hover{background:#f5f5f5}
+
+.thr-row{
+  display:flex;align-items:center;gap:.5rem;
+  margin-top:.7rem;font-size:.78rem;color:#666;font-weight:600;
+  flex-wrap:wrap;
+}
+input[type=range]{flex:1;min-width:70px;accent-color:#3dba8c}
+#thrVal{font-weight:800;color:#3dba8c;min-width:34px}
+
+.help-btn{
+  display:block;width:100%;
+  background:white;color:#111;
+  border:2.5px solid #111;border-radius:999px;
+  padding:.8rem;font-size:.92rem;font-weight:900;
+  cursor:pointer;margin-top:.7rem;
+  box-shadow:0 4px 0 #111;text-align:center;
+  transition:box-shadow .1s,transform .1s;
+}
+.help-btn:hover{box-shadow:0 2px 0 #111;transform:translateY(2px)}
+
+/* Right panel — camera */
+.run-right{
+  flex:1;display:flex;
+  flex-direction:column;align-items:center;
+  justify-content:flex-start;
+}
+#camBox{
+  width:100%;max-width:680px;
+  aspect-ratio:4/3;
+  background:#111;border:3px solid #222;
+  border-radius:18px;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;
+}
+#camBox canvas{
+  width:100%;height:100%;
+  object-fit:cover;display:block;
+}
+.cam-ph{text-align:center;color:#64748b}
+.cam-ph .ico{font-size:3.5rem;margin-bottom:.6rem}
+.cam-ph p{font-size:.88rem;line-height:1.6}
+
+#micBox{
+  width:100%;max-width:680px;aspect-ratio:4/3;
+  background:#111;border:3px solid #222;border-radius:18px;
+  display:none;flex-direction:column;
+  align-items:center;justify-content:center;gap:1rem;
+}
+#micIco{font-size:5.5rem;transition:transform .15s,opacity .15s}
+.mic-lbl{color:#94a3b8;font-size:.95rem;font-weight:700}
+
+@media(max-width:750px){
+  .run-body{flex-direction:column}
+  .run-left{width:100%;padding-right:0;padding-bottom:1rem}
+  .model-lbl{font-size:1.7rem}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════
+     HOME
+══════════════════════════════════ -->
+<div id="vHome" class="view active">
+  <div class="home-card">
+    <h1>micro:bit AI Connect 🤖</h1>
+    <p class="intro">
+      Give your micro:bit project AI superpowers! This site lets your micro:bit use
+      your computer's webcam or microphone to recognize images, poses, and sounds
+      based on your own trained AI model.<br><br>
+      Follow the steps below — train your model, load the starter code onto your
+      micro:bit, then click <strong>Connect</strong> to bring it all together!
+    </p>
+
+    <a href="https://teachablemachine.withgoogle.com" target="_blank" class="pill-btn">
+      1. &nbsp;Go to Google Teachable Machine
+    </a>
+
+    <button class="pill-btn" onclick="openMcModal()">
+      2. &nbsp;Get the micro:bit Starter Code
+    </button>
+
+    <button class="pill-btn accent" onclick="connectThenSetup()">
+      3. &nbsp;Connect your micro:bit to your AI!
+    </button>
+
+    <p class="home-hint">
+      A browser popup will ask you to select a serial port.<br>
+      It may appear as <strong>mbed Serial Port</strong> or <strong>USB Serial Device</strong>.
+    </p>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════
+     MAKECODE MODAL
+══════════════════════════════════ -->
+<div class="overlay" id="mcOverlay">
+  <div class="modal">
+    <button class="modal-x" onclick="closeMcModal()">✕</button>
+    <h2>📝 micro:bit Starter Code</h2>
+    <div class="mc-warn">
+      ⚠️ <strong>Important:</strong> Replace <strong>"Class 1"</strong>, <strong>"Class 2"</strong> etc.
+      with the exact class names you used in Teachable Machine.<br>
+      Spelling, spaces, and capitalization must match exactly!
+      Class names must be <strong>12 characters or fewer</strong>.
+    </div>
+    <div class="code-box">
+      <button class="copy-btn" onclick="copyMc()">📋 Copy</button>
+      <pre id="mcPre"></pre>
+    </div>
+    <a href="https://makecode.microbit.org/" target="_blank" class="mc-open">Open MakeCode →</a>
+    <p style="font-size:.8rem;color:#64748b;margin-top:.7rem;line-height:1.5">
+      In MakeCode, click the <strong>JavaScript</strong> tab, select all existing code,
+      then paste this code. Change the class names to match your model and add your own actions!
+    </p>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════
+     SETUP
+══════════════════════════════════ -->
+<div id="vSetup" class="view">
+
+  <div class="setup-l">
+    <h2>Not sure what to do?</h2>
+    <p>Visit Teachable Machine to train your own AI model:</p>
+    <a href="https://teachablemachine.withgoogle.com" target="_blank" class="tm-link">
+      Google Teachable Machine
+    </a>
+    <p>When you've finished training your model, follow these steps:</p>
+    <div class="steps-box">
+      <h3>4 simple steps:</h3>
+      <ol>
+        <li>Click <strong>"Export Model"</strong> in Teachable Machine</li>
+        <li>Click <strong>"Upload my model"</strong> and wait</li>
+        <li>Click <strong>"Copy"</strong> to copy the model link</li>
+        <li>Paste the link on the right and click <strong>Ready!</strong></li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="setup-r">
+    <h3>Paste your Teachable Machine model link here:</h3>
+
+    <div class="sf">
+      <input type="text" id="urlInput"
+        placeholder="https://teachablemachine.withgoogle.com/models/XXXXXXXX/" />
+    </div>
+
+    <div class="sf">
+      <label>Model Type</label>
+      <select id="typeSelect">
+        <option value="image">📷 Image</option>
+        <option value="pose">🕺 Pose</option>
+        <option value="audio">🎙️ Audio / Sound</option>
+      </select>
+    </div>
+
+    <div class="setup-row">
+      <label>Choose Camera:</label>
+      <select id="camSel"><option value="">Loading...</option></select>
+    </div>
+
+    <div class="setup-row">
+      <label>Choose Audio:</label>
+      <select id="audioSel"><option value="">Loading...</option></select>
+    </div>
+
+    <div class="err-box" id="errBox"></div>
+
+    <button class="ready-btn" onclick="clickReady()">Ready! 🚀</button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════
+     RUNNING
+══════════════════════════════════ -->
+<div id="vRun" class="view">
+
+  <div class="run-nav">
+    <button class="nav-serial" id="serialBtn" onclick="reconnect()">
+      🔌 Connect micro:bit
+    </button>
+    <button class="nav-icon" title="Starter Code" onclick="openMcModal()">ℹ️</button>
+    <button class="nav-icon" title="Home" onclick="goHome()">🏠</button>
+  </div>
+
+  <div class="run-body">
+
+    <div class="run-left">
+      <div class="model-lbl" id="modelLbl">IMAGE<br>MODEL</div>
+      <p class="model-desc">
+        The AI will identify which class best matches your camera or microphone input,
+        based on the model you trained in Teachable Machine.
+      </p>
+
+      <div class="results-card">
+        <div class="results-title">RESULTS!</div>
+        <div id="classRows">
+          <div style="color:#94a3b8;font-size:.88rem;padding:.5rem 0">
+            Loading model...
+          </div>
+        </div>
+      </div>
+
+      <button class="reset-btn" onclick="doReset()">Reset AI Recognition</button>
+
+      <div class="thr-row">
+        <span>Send threshold:</span>
+        <input type="range" id="thrSlider" min="0" max="100" value="70"
+          oninput="document.getElementById('thrVal').textContent=this.value+'%'">
+        <span id="thrVal">70%</span>
+        <span style="font-size:.75rem">— only sends to micro:bit above this</span>
+      </div>
+
+      <button class="help-btn" onclick="openMcModal()">HELP!</button>
+    </div>
+
+    <div class="run-right">
+      <div id="camBox">
+        <div class="cam-ph" id="camPh">
+          <div class="ico">📷</div>
+          <p>Camera will appear<br>when AI starts</p>
+        </div>
+      </div>
+      <div id="micBox">
+        <div id="micIco">🎙️</div>
+        <div class="mic-lbl">Listening...</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<script>
+/* ══════════════════════════════════
+   MakeCode starter code
+══════════════════════════════════ */
+const MC = `// ══════════════════════════════════════════════
+// micro:bit AI Connect — Starter Code
+// Serial format received: just the class name
+// e.g.  "Class 1\\n"  or  "smiling\\n"
+// Baud rate: 115200
+// ══════════════════════════════════════════════
+
+let SerialData = ""
+
+// On start: redirect serial to USB
+serial.redirectToUSB()
+
+// When a line arrives over serial:
+serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
+    SerialData = serial.readUntil(serial.delimiters(Delimiters.NewLine))
+
+    // ★ Change "Class 1", "Class 2" etc. to YOUR class names from Teachable Machine
+    // ★ Must match exactly — spelling, spaces, and capitals all matter!
+    // ★ Each class name must be 12 characters or fewer
+
+    if (SerialData == "Class 1") {
+        basic.showIcon(IconNames.Heart)
+        // Add more actions here...
+
+    } else if (SerialData == "Class 2") {
+        basic.showIcon(IconNames.Sad)
+        // Add more actions here...
+
+    } else if (SerialData == "Class 3") {
+        basic.showIcon(IconNames.Surprised)
+        // Add more actions here...
+
+    } else {
+        basic.clearScreen()
+    }
+})
+
+basic.showString("AI")
+basic.pause(300)
+basic.clearScreen()`;
+
+function openMcModal() {
+  document.getElementById('mcPre').textContent = MC;
+  document.getElementById('mcOverlay').classList.add('open');
+}
+function closeMcModal() {
+  document.getElementById('mcOverlay').classList.remove('open');
+}
+document.getElementById('mcOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('mcOverlay')) closeMcModal();
+});
+function copyMc() {
+  const btn = document.querySelector('.copy-btn');
+  navigator.clipboard.writeText(MC)
+    .catch(() => {
+      const t = document.createElement('textarea');
+      t.value = MC; document.body.appendChild(t);
+      t.select(); document.execCommand('copy');
+      document.body.removeChild(t);
+    })
+    .finally(() => {
+      btn.textContent = '✅ Copied!';
+      setTimeout(() => btn.textContent = '📋 Copy', 2000);
+    });
+}
+
+/* ══════════════════════════════════
+   State
+══════════════════════════════════ */
+let model       = null;
+let audioRecog  = null;
+let mType       = 'image';
+let labels      = [];
+let webcam      = null;
+let isRunning   = false;
+let serialPort  = null;
+let serialWriter= null;
+let lastSend    = 0;
+const SEND_MS   = 300;
+
+/* ══════════════════════════════════
+   View helpers
+══════════════════════════════════ */
+function show(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function goHome() {
+  stopAll();
+  show('vHome');
+}
+
+/* ══════════════════════════════════
+   Serial
+══════════════════════════════════ */
+async function connectSerial() {
+  if (!('serial' in navigator)) return false;
+  try {
+    serialPort   = await navigator.serial.requestPort();
+    await serialPort.open({ baudRate: 115200 });
+    serialWriter = serialPort.writable.getWriter();
+    return true;
+  } catch(e) {
+    if (e.name !== 'NotFoundError') console.warn('Serial:', e.message);
+    return false;
+  }
+}
+async function reconnect() {
+  if (serialWriter) { try { serialWriter.releaseLock(); } catch(_){} serialWriter = null; }
+  if (serialPort)   { try { await serialPort.close(); }   catch(_){} serialPort   = null; }
+  const btn = document.getElementById('serialBtn');
+  btn.textContent = '🔌 Connect micro:bit';
+  btn.classList.remove('ok');
+  const ok = await connectSerial();
+  if (ok) {
+    btn.textContent = '✅ micro:bit Connected';
+    btn.classList.add('ok');
+  }
+}
+async function sendSerial(label) {
+  if (serialWriter) {
+    try { await serialWriter.write(new TextEncoder().encode(label + '\n')); }
+    catch(e) { console.warn('Send error:', e); }
+  }
+}
+
+/* ══════════════════════════════════
+   Home → connect → setup
+══════════════════════════════════ */
+async function connectThenSetup() {
+  if ('serial' in navigator) {
+    const ok = await connectSerial();
+    if (ok) {
+      // will update button when we reach run view
+    }
+  }
+  show('vSetup');
+  await enumDevices();
+}
+
+/* ══════════════════════════════════
+   Enumerate devices
+══════════════════════════════════ */
+async function enumDevices() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    const devices = await navigator.mediaDevices.enumerateDevices(); // enumerate while stream is active → labels available
+    stream.getTracks().forEach(t => t.stop());
+    const cams  = devices.filter(d => d.kind === 'videoinput');
+    const mics  = devices.filter(d => d.kind === 'audioinput');
+
+    const cs = document.getElementById('camSel');
+    const as = document.getElementById('audioSel');
+    cs.innerHTML = '';
+    as.innerHTML = '';
+    cams.forEach((c,i) => {
+      const o = new Option(c.label || `Camera ${i+1}`, c.deviceId);
+      cs.appendChild(o);
+    });
+    mics.forEach((m,i) => {
+      const o = new Option(m.label || `Microphone ${i+1}`, m.deviceId);
+      as.appendChild(o);
+    });
+  } catch(e) {
+    document.getElementById('camSel').innerHTML  = '<option value="">Permission denied</option>';
+    document.getElementById('audioSel').innerHTML = '<option value="">Permission denied</option>';
+  }
+}
+
+/* ══════════════════════════════════
+   Setup → Ready
+══════════════════════════════════ */
+async function clickReady() {
+  const url   = document.getElementById('urlInput').value.trim();
+  const errEl = document.getElementById('errBox');
+  errEl.style.display = 'none';
+
+  if (!url) {
+    errEl.textContent = 'Please enter a model URL.';
+    errEl.style.display = 'block'; return;
+  }
+
+  mType = document.getElementById('typeSelect').value;
+  const base = url.endsWith('/') ? url : url + '/';
+
+  // Switch to run view with loading state
+  show('vRun');
+  updateModelLabel();
+
+  // Update serial button if already connected
+  if (serialWriter) {
+    const btn = document.getElementById('serialBtn');
+    btn.textContent = '✅ micro:bit Connected';
+    btn.classList.add('ok');
+  }
+
+  document.getElementById('classRows').innerHTML =
+    '<div style="color:#94a3b8;font-size:.88rem">Loading model…</div>';
+
+  try {
+    // Auto-detect model type from metadata.json (TM stores type as 'image','pose','sound')
+    try {
+      const meta = await fetch(base + 'metadata.json').then(r => r.json());
+      if (meta && meta.type) {
+        const detected = meta.type === 'sound' ? 'audio' : meta.type;
+        if (['image', 'pose', 'audio'].includes(detected)) {
+          mType = detected;
+          document.getElementById('typeSelect').value = mType;
+          updateModelLabel();
+        }
+      }
+    } catch(_) { /* use user-selected type if metadata unavailable */ }
+
+    if (mType === 'audio') {
+      audioRecog = await speechCommands.create(
+        'BROWSER_FFT', undefined, base+'model.json', base+'metadata.json');
+      await audioRecog.ensureModelLoaded();
+      model  = audioRecog;
+      labels = audioRecog.wordLabels();
+    } else if (mType === 'pose') {
+      model  = await tmPose.load(base+'model.json', base+'metadata.json');
+      labels = model.getClassLabels();
+    } else {
+      model  = await tmImage.load(base+'model.json', base+'metadata.json');
+      labels = model.getClassLabels();
+    }
+
+    buildRows(labels);
+    await startAI();
+
+  } catch(e) {
+    document.getElementById('classRows').innerHTML =
+      `<div style="color:#ef4444;font-size:.88rem;font-weight:700">
+        ❌ Failed to load model:<br>${e.message}
+      </div>`;
+    console.error(e);
+  }
+}
+
+function updateModelLabel() {
+  const map = { image:'IMAGE\nMODEL', pose:'POSE\nMODEL', audio:'AUDIO\nMODEL' };
+  document.getElementById('modelLbl').innerText = map[mType] || 'AI\nMODEL';
+}
+
+/* ══════════════════════════════════
+   Build class result rows
+══════════════════════════════════ */
+function buildRows(lbls) {
+  const cont = document.getElementById('classRows');
+  cont.innerHTML = '';
+  lbls.forEach((name, i) => {
+    const row = document.createElement('div');
+    row.className = 'class-row';
+    row.innerHTML = `
+      <span class="class-num">${i+1}</span>
+      <div class="bar-wrap">
+        <div class="bar-track">
+          <div class="bar-fill lose" id="fill_${i}">
+            <span class="bar-pct" id="pct_${i}"></span>
+          </div>
+        </div>
+      </div>
+      <span class="chk" id="chk_${i}">✓</span>`;
+    cont.appendChild(row);
+    const lbl = document.createElement('div');
+    lbl.className = 'bar-name';
+    lbl.textContent = name;
+    cont.appendChild(lbl);
+  });
+}
+
+/* ══════════════════════════════════
+   Update predictions — called every frame
+══════════════════════════════════ */
+function updatePreds(predictions) {
+  let maxI = 0, maxP = -1;
+  predictions.forEach((p, i) => {
+    const prob = p.probability ?? Number(p);
+    if (prob > maxP) { maxP = prob; maxI = i; }
+  });
+
+  predictions.forEach((p, i) => {
+    const prob = p.probability ?? Number(p);
+    const pct  = Math.round(prob * 100);
+    const isW  = (i === maxI);
+
+    const fill = document.getElementById(`fill_${i}`);
+    const pctEl= document.getElementById(`pct_${i}`);
+    const chk  = document.getElementById(`chk_${i}`);
+    if (!fill) return;
+
+    fill.style.width = pct + '%';
+    fill.className   = `bar-fill ${isW ? 'win' : 'lose'}`;
+    if (pctEl) pctEl.textContent = pct > 5 ? pct + '%' : '';
+    if (chk)   chk.className = `chk ${isW ? 'on' : ''}`;
+  });
+
+  // Serial send (throttled): send winning class name only
+  const thr = parseInt(document.getElementById('thrSlider').value);
+  const now  = Date.now();
+  if (now - lastSend >= SEND_MS) {
+    lastSend = now;
+    const winPct   = Math.round(maxP * 100);
+    const winLabel = predictions[maxI]?.className ?? labels[maxI] ?? `Class ${maxI+1}`;
+    sendSerial(winPct >= thr ? winLabel : 'none');
+  }
+}
+
+/* ══════════════════════════════════
+   Start AI
+══════════════════════════════════ */
+async function startAI() {
+  isRunning = true;
+
+  if (mType === 'audio') {
+    document.getElementById('camBox').style.display = 'none';
+    document.getElementById('micBox').style.display = 'flex';
+    startAudio();
+  } else {
+    document.getElementById('camBox').style.display = '';
+    document.getElementById('micBox').style.display = 'none';
+    await startWebcam();
+  }
+}
+
+/* ── Webcam (Image / Pose) ── */
+async function startWebcam() {
+  const box    = document.getElementById('camBox');
+  const camId  = document.getElementById('camSel')?.value || '';
+
+  // Clear placeholder
+  box.innerHTML = '';
+
+  try {
+    webcam = new tmImage.Webcam(500, 500, true); // w, h, flip=mirror
+    const constraints = camId ? { deviceId: camId } : {};
+    await webcam.setup(constraints);
+    await webcam.play();
+  } catch(e) {
+    box.innerHTML = `<div class="cam-ph">
+      <div class="ico">❌</div>
+      <p>Camera error: ${e.message}<br><br>
+      Open via Live Server / HTTPS and allow camera access.</p></div>`;
+    return;
+  }
+
+  // Scale the small canvas up to fill the display box via CSS
+  webcam.canvas.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+  box.appendChild(webcam.canvas);
+
+  // Status overlay (hidden once predictions start)
+  const statusEl = document.createElement('div');
+  statusEl.style.cssText = 'position:absolute;bottom:8px;left:10px;color:rgba(255,255,255,.7);font-size:.75rem;font-weight:700;pointer-events:none';
+  statusEl.textContent = 'Starting AI...';
+  box.style.position = 'relative';
+  box.appendChild(statusEl);
+
+  const ctx = webcam.canvas.getContext('2d');
+  let frameCount = 0;
+
+  // ── Prediction loop — exact TM pattern ──
+  async function loop() {
+    if (!isRunning) return;
+
+    webcam.update(); // renders current video frame onto webcam.canvas
+
+    try {
+      let preds;
+
+      if (mType === 'pose') {
+        const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
+        preds = await model.predict(posenetOutput);
+        updatePreds(preds); // update bars first — drawing errors won't block this
+        if (pose && pose.keypoints && ctx) {
+          tmPose.drawKeypoints(pose.keypoints, 0.5, ctx);  // tmPose module, not model
+          tmPose.drawSkeleton(pose.keypoints, 0.5, ctx);
+        }
+      } else {
+        // image model — pass the webcam canvas directly
+        preds = await model.predict(webcam.canvas);
+        updatePreds(preds);
+      }
+
+      // Show live confidence in status overlay
+      frameCount++;
+      if (frameCount === 1) statusEl.textContent = ''; // predictions running
+      const top = preds.reduce((a, b) => (b.probability > a.probability ? b : a));
+      statusEl.textContent = `${top.className}: ${Math.round(top.probability * 100)}%`;
+
+    } catch(err) {
+      statusEl.textContent = '⚠ ' + err.message;
+      console.error('Prediction error:', err);
+    }
+
+    if (isRunning) window.requestAnimationFrame(loop);
+  }
+
+  window.requestAnimationFrame(loop); // start loop (matches TM official pattern)
+}
+
+/* ── Audio ── */
+async function startAudio() {
+  await audioRecog.listen(result => {
+    if (!isRunning) return;
+    const scores = Array.from(result.scores);
+    const preds  = labels.map((name, i) => ({ className: name, probability: scores[i] || 0 }));
+    updatePreds(preds);
+    const mx   = Math.max(...scores);
+    const icon = document.getElementById('micIco');
+    if (icon) {
+      icon.style.transform = `scale(${0.85 + 0.45 * mx})`;
+      icon.style.opacity   = String(0.3 + 0.7 * mx);
+    }
+  }, {
+    includeSpectrogram: false,
+    probabilityThreshold: 0.0,
+    invokeCallbackOnNoiseAndUnknown: true,
+    overlapFactor: 0.5
+  });
+}
+
+/* ══════════════════════════════════
+   Stop / Reset
+══════════════════════════════════ */
+function stopAll() {
+  isRunning = false;
+  if (audioRecog) { try { audioRecog.stopListening(); } catch(_){} }
+  if (webcam)     { try { webcam.stop(); } catch(_){} webcam = null; }
+}
+
+function doReset() {
+  stopAll();
+  labels.forEach((_, i) => {
+    const fill = document.getElementById(`fill_${i}`);
+    const pctEl= document.getElementById(`pct_${i}`);
+    const chk  = document.getElementById(`chk_${i}`);
+    if (fill)  { fill.style.width = '0%'; fill.className = 'bar-fill lose'; }
+    if (pctEl) pctEl.textContent = '';
+    if (chk)   chk.className = 'chk';
+  });
+  document.getElementById('camBox').innerHTML =
+    `<div class="cam-ph" id="camPh"><div class="ico">📷</div><p>Restarting...</p></div>`;
+  setTimeout(() => startAI(), 400);
+}
+</script>
+</body>
+</html>

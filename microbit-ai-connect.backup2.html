@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>micro:bit AI Connect</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.4.0/dist/speech-commands.min.js"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Segoe UI',Arial,sans-serif;overflow-x:hidden}
+
+/* ── Views ── */
+.view{display:none;min-height:100vh}
+.view.active{display:flex}
+
+/* ══════════════════════════════════
+   HOME
+══════════════════════════════════ */
+#vHome{
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  background:#D3D3FF;
+  padding:2.5rem 1.5rem;
+  min-height:100vh;
+}
+.home-card{
+  background:white;
+  border-radius:24px;
+  border:3px solid #9400D3;
+  box-shadow:6px 6px 0 #9400D3;
+  padding:2.5rem 2.8rem;
+  max-width:720px;
+  width:100%;
+}
+.home-card h1{
+  font-size:1.85rem;font-weight:900;color:#9400D3;
+  margin-bottom:.3rem;letter-spacing:-0.5px;
+}
+.home-tagline{
+  font-size:1.05rem;font-weight:700;color:#111;
+  margin-bottom:1rem;
+}
+.home-intro{
+  font-size:.92rem;line-height:1.8;color:#333;
+  margin-bottom:1.2rem;font-weight:500;
+}
+.section-label{
+  font-size:.95rem;font-weight:900;color:#9400D3;
+  margin-bottom:.4rem;
+}
+.section-sub{
+  font-size:.86rem;color:#666;margin-bottom:.9rem;
+}
+/* ── SENSE → THINK → ACT diagram ── */
+.flow-diagram{
+  display:flex;align-items:stretch;justify-content:center;
+  gap:0;margin:1rem 0 1.4rem;flex-wrap:wrap;
+}
+.flow-node{
+  flex:1;min-width:90px;max-width:150px;
+  border-radius:16px;padding:.9rem .7rem;
+  text-align:center;
+}
+.flow-node.sense{background:#D3D3FF;color:#9400D3;border:2.5px solid #9400D3}
+.flow-node.think{background:#9400D3;color:white;border:2.5px solid #7000aa}
+.flow-node.act  {background:#ED80E9;color:#111;border:2.5px solid #c060bc}
+.fn-icon {font-size:1.9rem;margin-bottom:.3rem}
+.fn-label{font-size:.9rem;font-weight:900;letter-spacing:1px}
+.fn-sub  {font-size:.73rem;opacity:.85;margin-top:.2rem}
+.flow-arrow{
+  display:flex;align-items:center;
+  font-size:1.6rem;color:#9400D3;
+  font-weight:900;padding:0 .4rem;
+}
+/* ── How-it-works numbered list ── */
+.how-steps{
+  background:#f7f0ff;border-left:4px solid #9400D3;
+  border-radius:0 10px 10px 0;
+  padding:.85rem 1.1rem;margin:0 0 1rem;
+}
+.how-steps ol{margin:0;padding-left:1.4rem}
+.how-steps li{font-size:.88rem;line-height:1.75;color:#333;margin-bottom:.2rem}
+/* ── Outcome box ── */
+.outcome-box{margin:.8rem 0 1.3rem}
+.outcome-box>p{font-size:.9rem;color:#333;margin-bottom:.5rem;font-weight:700}
+.outcome-box ol{padding-left:1.3rem;margin:0}
+.outcome-box li{font-size:.88rem;color:#333;line-height:1.7;padding:.1rem 0}
+.cta-text{
+  font-size:1.25rem;font-weight:900;color:#9400D3;
+  margin-top:.9rem;text-align:center;
+}
+/* ── Buttons ── */
+.pill-btn{
+  display:block;width:100%;
+  background:white;color:#111;
+  border:2.5px solid #111;
+  border-radius:999px;
+  padding:1rem 1.5rem;
+  font-size:.98rem;font-weight:800;
+  cursor:pointer;margin-bottom:.9rem;
+  box-shadow:0 5px 0 #111;
+  text-align:center;text-decoration:none;
+  transition:box-shadow .1s,transform .1s;
+}
+.pill-btn:hover{box-shadow:0 2px 0 #111;transform:translateY(3px)}
+.pill-btn:active{box-shadow:0 1px 0 #111;transform:translateY(4px)}
+.pill-btn.step1{background:#9400D3;color:white;border-color:#6a0098;box-shadow:0 5px 0 #6a0098}
+.pill-btn.step1:hover{box-shadow:0 2px 0 #6a0098;transform:translateY(3px)}
+.pill-btn.step1:active{box-shadow:0 1px 0 #6a0098;transform:translateY(4px)}
+.pill-btn.step2{background:#D8BFD8;color:#111;border-color:#b09ab0;box-shadow:0 5px 0 #b09ab0}
+.pill-btn.step2:hover{box-shadow:0 2px 0 #b09ab0;transform:translateY(3px)}
+.pill-btn.step2:active{box-shadow:0 1px 0 #b09ab0;transform:translateY(4px)}
+.pill-btn.step3{background:#ED80E9;color:#111;border-color:#c060bc;box-shadow:0 5px 0 #c060bc}
+.pill-btn.step3:hover{box-shadow:0 2px 0 #c060bc;transform:translateY(3px)}
+.pill-btn.step3:active{box-shadow:0 1px 0 #c060bc;transform:translateY(4px)}
+.home-hint{
+  text-align:center;font-size:.82rem;font-weight:700;
+  color:#666;margin-top:.4rem;
+}
+
+/* ══════════════════════════════════
+   MAKECODE MODAL
+══════════════════════════════════ */
+.overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.5);z-index:999;
+  align-items:center;justify-content:center;padding:1rem;
+}
+.overlay.open{display:flex}
+.modal{
+  background:white;border-radius:18px;border:2.5px solid #111;
+  box-shadow:5px 5px 0 #111;
+  padding:1.8rem;max-width:700px;width:100%;
+  max-height:88vh;overflow-y:auto;position:relative;
+}
+.modal h2{font-size:1.25rem;font-weight:900;margin-bottom:.6rem}
+.modal-x{
+  position:absolute;top:1rem;right:1rem;
+  background:#f1f5f9;border:none;border-radius:50%;
+  width:30px;height:30px;cursor:pointer;font-size:1rem;
+  display:flex;align-items:center;justify-content:center;
+}
+.modal-x:hover{background:#e2e8f0}
+.mc-warn{
+  background:#fffbeb;border:1.5px solid #fbbf24;border-radius:8px;
+  padding:.8rem 1rem;font-size:.83rem;color:#78350f;
+  margin-bottom:.9rem;line-height:1.6;
+}
+.code-box{
+  position:relative;background:#1e293b;border-radius:10px;
+  padding:1rem;overflow-x:auto;
+}
+.code-box pre{
+  font-family:Consolas,'Courier New',monospace;
+  font-size:.78rem;line-height:1.7;color:#e2e8f0;white-space:pre;
+}
+.copy-btn{
+  position:absolute;top:9px;right:9px;
+  background:#334155;color:#94a3b8;
+  border:1px solid #475569;border-radius:6px;
+  padding:3px 9px;font-size:.73rem;font-weight:700;cursor:pointer;
+}
+.copy-btn:hover{background:#475569;color:white}
+.mc-instructions{
+  background:#f7f0ff;border-left:4px solid #9400D3;
+  border-radius:0 10px 10px 0;
+  padding:.85rem 1.1rem;margin-bottom:1rem;
+  font-size:.84rem;color:#333;line-height:1.7;
+}
+.mc-instructions .mc-inst-title{
+  font-weight:900;color:#9400D3;font-size:.9rem;
+  margin-bottom:.35rem;
+}
+.mc-instructions ol{
+  margin:.2rem 0 .6rem;padding-left:1.4rem;
+}
+.mc-instructions ol li{margin-bottom:.1rem;}
+.mc-instructions .mc-inst-sub{
+  font-weight:800;color:#555;font-size:.83rem;
+  margin-top:.55rem;margin-bottom:.25rem;
+}
+.mc-open-top{
+  display:block;margin-bottom:.9rem;
+  background:#9400D3;color:white;border:none;border-radius:10px;
+  padding:11px 20px;font-size:1rem;font-weight:800;
+  cursor:pointer;text-decoration:none;text-align:center;
+  transition:background .15s;
+}
+.mc-open-top:hover{background:#7000aa}
+/* ── Code tabs ── */
+.code-tabs{display:flex;gap:.35rem;margin-bottom:0;border-bottom:2px solid #D8BFD8}
+.tab-btn{
+  padding:.45rem 1.1rem;border-radius:8px 8px 0 0;
+  border:2px solid #D8BFD8;border-bottom:none;
+  background:#f7f0ff;color:#9400D3;
+  font-size:.83rem;font-weight:800;cursor:pointer;
+  margin-bottom:-2px;position:relative;
+  transition:background .12s;
+}
+.tab-btn.active{background:#9400D3;color:white;border-color:#9400D3}
+.tab-btn:not(.active):hover{background:#ede0ff}
+.tab-panel{padding-top:.7rem}
+.blocks-ph{
+  background:#f7f0ff;border-radius:12px;
+  padding:2rem 1.5rem;text-align:center;
+}
+.blocks-ph .bico{font-size:3rem;margin-bottom:.8rem}
+.blocks-ph p{font-size:.9rem;color:#444;line-height:1.7}
+
+/* ══════════════════════════════════
+   SETUP
+══════════════════════════════════ */
+#vSetup{flex-direction:column;min-height:100vh}
+.setup-l{
+  background:#9400D3;padding:1.8rem 3rem;
+}
+.setup-l-inner{
+  display:flex;gap:2.5rem;align-items:flex-start;
+  max-width:1100px;margin:0 auto;flex-wrap:wrap;
+}
+.setup-l-info{flex:1;min-width:200px}
+.setup-l-steps{flex:1;min-width:220px}
+.setup-l h2{font-size:1.7rem;font-weight:900;color:white;margin-bottom:.7rem}
+.setup-l p{font-size:.9rem;color:rgba(255,255,255,.92);line-height:1.65;margin-bottom:.8rem;font-weight:500}
+.tm-link{
+  display:block;background:#ED80E9;color:#111;
+  border:2.5px solid #c060bc;border-radius:999px;
+  padding:.85rem 1.2rem;font-size:.95rem;font-weight:800;
+  text-align:center;text-decoration:none;cursor:pointer;
+  box-shadow:0 4px 0 #c060bc;margin-bottom:1.3rem;
+  transition:box-shadow .1s,transform .1s;
+}
+.tm-link:hover{box-shadow:0 2px 0 #c060bc;transform:translateY(2px)}
+.steps-box{
+  background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.25);
+  border-radius:14px;padding:1.1rem 1.3rem;
+}
+.steps-box h3{font-size:.95rem;font-weight:900;color:white;margin-bottom:.65rem}
+.steps-box ol{padding-left:1.2rem}
+.steps-box li{font-size:.87rem;color:rgba(255,255,255,.9);margin-bottom:.45rem;line-height:1.55;font-weight:600}
+.setup-r{
+  flex:1;background:white;
+  display:flex;flex-direction:column;justify-content:center;
+  align-items:center;padding:2.5rem 3rem;
+}
+.setup-r-inner{max-width:1100px;width:100%}
+.setup-r h3{font-size:1.1rem;font-weight:900;color:#9400D3;margin-bottom:1.1rem}
+.sf{margin-bottom:1.2rem}
+.sf label{display:block;font-size:.88rem;font-weight:700;color:#555;margin-bottom:.45rem}
+.sf input[type=text]{
+  width:100%;padding:11px 14px;
+  border:2px solid #D8BFD8;border-radius:8px;
+  font-size:.93rem;background:white;color:#111;
+  transition:border-color .18s;
+}
+.sf input[type=text]:focus{outline:none;border-color:#9400D3;box-shadow:0 0 0 3px rgba(148,0,211,.12)}
+.sf select{
+  width:100%;padding:9px 12px;
+  border:2px solid #D8BFD8;border-radius:8px;
+  font-size:.9rem;background:white;color:#111;cursor:pointer;
+}
+.sf select:focus{outline:none;border-color:#9400D3}
+.setup-row{display:flex;align-items:center;gap:1rem;margin-bottom:1rem}
+.setup-row label{font-size:.88rem;font-weight:700;color:#555;min-width:115px}
+.setup-row select{
+  flex:1;padding:9px 12px;
+  border:2px solid #D8BFD8;border-radius:8px;
+  font-size:.9rem;background:white;color:#111;
+}
+.ready-btn{
+  display:block;margin-left:auto;
+  background:#ED80E9;color:#111;border:2.5px solid #c060bc;
+  border-radius:999px;padding:.95rem 2.2rem;
+  font-size:1.05rem;font-weight:900;cursor:pointer;
+  box-shadow:0 5px 0 #c060bc;
+  transition:box-shadow .1s,transform .1s;
+}
+.ready-btn:hover{box-shadow:0 2px 0 #c060bc;transform:translateY(3px)}
+.ready-btn:active{box-shadow:0 1px 0 #c060bc;transform:translateY(4px)}
+.err-box{
+  background:#fee2e2;color:#991b1b;border-radius:8px;
+  padding:9px 13px;font-size:.83rem;font-weight:600;
+  margin-top:.65rem;display:none;
+}
+@media(max-width:680px){
+  #vSetup{flex-direction:column}
+  .setup-l,.setup-r{min-height:auto}
+}
+
+/* ══════════════════════════════════
+   RUNNING PAGE
+══════════════════════════════════ */
+#vRun{flex-direction:column;background:#f7f0ff;min-height:100vh}
+
+/* Nav bar */
+.run-nav{
+  display:flex;align-items:center;justify-content:flex-end;
+  gap:.6rem;padding:.8rem 1.4rem;
+  background:#D3D3FF;border-bottom:2px solid #9400D3;
+}
+.nav-serial{
+  border:2px solid #9400D3;border-radius:999px;
+  padding:.45rem 1.1rem;font-size:.82rem;font-weight:800;
+  cursor:pointer;background:white;color:#9400D3;transition:all .15s;
+}
+.nav-serial:hover{background:#ede0ff}
+.nav-serial.ok{background:#e8d5ff;border-color:#9400D3;color:#6d00a0}
+.nav-icon{
+  border-radius:999px;
+  background:#9400D3;border:2px solid #6a0098;
+  cursor:pointer;font-size:.82rem;font-weight:800;color:white;
+  padding:.45rem 1rem;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s;white-space:nowrap;
+}
+.nav-icon:hover{background:#7000aa}
+
+/* Body */
+.run-body{
+  display:flex;flex:1;gap:0;
+  padding:1.2rem 1.4rem;
+}
+
+/* Left panel */
+.run-left{
+  width:40%;min-width:270px;
+  padding-right:1.3rem;
+  display:flex;flex-direction:column;
+}
+.model-lbl{
+  font-size:2.4rem;font-weight:900;color:#111;
+  line-height:1.05;margin-bottom:.7rem;
+  letter-spacing:-1px;
+}
+.model-desc{
+  font-size:.85rem;color:#555;line-height:1.6;
+  margin-bottom:1rem;font-weight:500;
+}
+
+/* Results card */
+.results-card{
+  background:white;border:2px solid #ddd;
+  border-radius:16px;padding:1.2rem 1.3rem;
+  flex:1;min-height:0;
+}
+.results-title{
+  font-size:1.55rem;font-weight:900;color:#111;
+  margin-bottom:1rem;
+}
+.class-row{
+  display:flex;align-items:center;
+  gap:.7rem;margin-bottom:.4rem;
+}
+.class-num{
+  font-size:1.15rem;font-weight:900;
+  color:#e8873a;min-width:18px;flex-shrink:0;
+}
+.bar-wrap{flex:1;position:relative}
+.bar-track{
+  height:44px;background:#ddd6b0;border-radius:9px;
+  overflow:hidden;position:relative;
+}
+.bar-fill{
+  position:absolute;left:0;top:0;bottom:0;
+  border-radius:9px;width:0%;
+  transition:width .2s ease-out;
+  display:flex;align-items:center;justify-content:flex-end;
+  padding-right:10px;
+}
+.bar-fill.win{background:#9400D3}
+.bar-fill.lose{background:#D8BFD8}
+.bar-pct{
+  font-size:.92rem;font-weight:800;color:white;
+  white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.25);
+  pointer-events:none;
+}
+.bar-name{
+  font-size:.7rem;font-weight:700;color:#888;
+  margin-top:2px;margin-bottom:.55rem;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  max-width:100%;
+  padding-left:calc(18px + .7rem);
+}
+.chk{
+  font-size:1.4rem;color:#9400D3;font-weight:900;
+  min-width:24px;text-align:center;
+  opacity:0;transition:opacity .2s;
+}
+.chk.on{opacity:1}
+
+/* Buttons under card */
+.reset-btn{
+  display:block;width:100%;
+  background:white;color:#444;
+  border:2px solid #333;border-radius:999px;
+  padding:.75rem;font-size:.9rem;font-weight:700;
+  cursor:pointer;margin-top:.8rem;
+  transition:background .15s;
+}
+.reset-btn:hover{background:#f5f5f5}
+
+.thr-row{
+  display:flex;align-items:center;gap:.5rem;
+  margin-top:.7rem;font-size:.78rem;color:#666;font-weight:600;
+  flex-wrap:wrap;
+}
+input[type=range]{flex:1;min-width:70px;accent-color:#9400D3}
+#thrVal{font-weight:800;color:#9400D3;min-width:34px}
+
+.help-btn{
+  display:block;width:100%;
+  background:#9400D3;color:white;
+  border:2.5px solid #6a0098;border-radius:999px;
+  padding:.8rem;font-size:.92rem;font-weight:900;
+  cursor:pointer;margin-top:.7rem;
+  box-shadow:0 4px 0 #6a0098;text-align:center;
+  transition:box-shadow .1s,transform .1s;
+}
+.help-btn:hover{box-shadow:0 2px 0 #6a0098;transform:translateY(2px)}
+
+/* Help overlay */
+#helpOverlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.55);z-index:2000;
+  align-items:center;justify-content:center;
+}
+#helpOverlay.open{display:flex}
+.help-modal{
+  background:white;border-radius:20px;
+  padding:2rem 2.2rem;max-width:520px;width:92%;
+  max-height:90vh;overflow-y:auto;
+  box-shadow:0 12px 40px rgba(0,0,0,.3);
+  position:relative;
+}
+.help-modal h2{
+  font-size:1.5rem;font-weight:900;color:#9400D3;
+  margin:0 0 .4rem;
+}
+.help-modal .close-btn{
+  position:absolute;top:1rem;right:1.2rem;
+  background:none;border:none;font-size:1.6rem;
+  cursor:pointer;color:#9400D3;line-height:1;
+}
+.help-modal .flow-diagram{margin:1rem 0 1.2rem}
+.help-modal .hm-steps{
+  background:#f7f0ff;border-left:4px solid #9400D3;
+  border-radius:0 10px 10px 0;
+  padding:.85rem 1.1rem;margin-bottom:1.2rem;
+}
+.help-modal .hm-steps ol{margin:0;padding-left:1.4rem}
+.help-modal .hm-steps li{font-size:.88rem;line-height:1.75;color:#333;margin-bottom:.2rem}
+.help-modal .hm-btns{display:flex;flex-direction:column;gap:.6rem}
+
+/* Right panel — camera */
+.run-right{
+  flex:1;display:flex;
+  flex-direction:column;align-items:center;
+  justify-content:flex-start;
+}
+#camBox{
+  width:100%;max-width:680px;
+  aspect-ratio:4/3;
+  background:#111;border:3px solid #222;
+  border-radius:18px;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;
+}
+#camBox canvas{
+  width:100%;height:100%;
+  object-fit:cover;display:block;
+}
+.cam-ph{text-align:center;color:#64748b}
+.cam-ph .ico{font-size:3.5rem;margin-bottom:.6rem}
+.cam-ph p{font-size:.88rem;line-height:1.6}
+
+#micBox{
+  width:100%;max-width:680px;aspect-ratio:4/3;
+  background:#111;border:3px solid #222;border-radius:18px;
+  display:none;flex-direction:column;
+  align-items:center;justify-content:center;gap:1rem;
+}
+#micIco{font-size:5.5rem;transition:transform .15s,opacity .15s}
+.mic-lbl{color:#94a3b8;font-size:.95rem;font-weight:700}
+
+@media(max-width:750px){
+  .run-body{flex-direction:column}
+  .run-left{width:100%;padding-right:0;padding-bottom:1rem}
+  .model-lbl{font-size:1.7rem}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════
+     HOME
+══════════════════════════════════ -->
+<div id="vHome" class="view active">
+  <div class="home-card">
+    <h1>Build Your First Physical AI System</h1>
+    <p class="home-tagline">Welcome! Ready to bring AI into the real world?</p>
+
+    <p class="home-intro">
+      In this activity, you won't just look at AI on a screen.
+      You will <strong>give AI a physical body.</strong><br>
+      You will train an AI model and connect it to a real electronic device.
+      When your AI sees or hears something, your device will react instantly.<br><br>
+      You will first train an AI classification model using <strong>Google Teachable Machine</strong>.
+      Your model can recognize images, body poses, or sounds. Then, you will connect the
+      model's prediction results to a physical computing device, such as an
+      <strong>LED, servo motor, or speaker</strong>.
+    </p>
+
+    <p class="section-label">How It Works — The 3 Steps</p>
+    <p class="section-sub">AI systems work just like humans do. Here is how your project will come to life:</p>
+
+    <div class="flow-diagram">
+      <div class="flow-node sense">
+        <div class="fn-icon">👁️</div>
+        <div class="fn-label">SENSE</div>
+        <div class="fn-sub">Camera / Mic</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node think">
+        <div class="fn-icon">🧠</div>
+        <div class="fn-label">THINK</div>
+        <div class="fn-sub">AI Model</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node act">
+        <div class="fn-icon">🤖</div>
+        <div class="fn-label">ACT</div>
+        <div class="fn-sub">LED / Motor</div>
+      </div>
+    </div>
+
+    <div class="how-steps">
+      <ol>
+        <li><strong>Sense:</strong> Your computer's camera or microphone gathers information from the real world.</li>
+        <li><strong>Think:</strong> Your AI model (trained by you using Google Teachable Machine) figures out what it sees or hears.</li>
+        <li><strong>Act:</strong> Your code sends a command to your physical device to make it light up, move, or make a sound!</li>
+      </ol>
+    </div>
+
+    <div class="outcome-box">
+      <p>By the end of this project, you will be a creator who knows how to:</p>
+      <ol>
+        <li>Train your own AI using images, poses, or sounds.</li>
+        <li>Connect AI predictions to real-world code.</li>
+        <li>Control physical gadgets using nothing but the power of AI!</li>
+      </ol>
+      <p class="cta-text">Let's get building!</p>
+    </div>
+
+    <a href="https://teachablemachine.withgoogle.com" target="_blank" class="pill-btn step1">
+      Step 1: &nbsp;Train your AI Model
+    </a>
+
+    <button class="pill-btn step2" onclick="openMcModal()">
+      Step 2: &nbsp;Build and create codes of your physical computing tool
+    </button>
+
+    <button class="pill-btn step3" onclick="connectThenSetup()">
+      Step 3: &nbsp;Connect your physical computing tool to your AI model
+    </button>
+
+    <p class="home-hint">
+      A browser popup will ask you to select a serial port.<br>
+      It may appear as <strong>mbed Serial Port</strong> or <strong>USB Serial Device</strong>.
+    </p>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════
+     MAKECODE MODAL
+══════════════════════════════════ -->
+<div class="overlay" id="mcOverlay">
+  <div class="modal">
+    <button class="modal-x" onclick="closeMcModal()">✕</button>
+    <h2>🤖 Physical AI Basic Code</h2>
+
+    <div class="mc-instructions">
+      <div class="mc-inst-title">Connect and Download Your Code</div>
+      <ol>
+        <li>Connect your physical computing tool, sensor, and actuator.</li>
+        <li>Plug the tool into your computer using a USB cable.</li>
+        <li>Open MakeCode and edit the code.</li>
+        <li>Click <strong>Download</strong> to send the code to your physical computing tool.</li>
+      </ol>
+      <div class="mc-inst-sub">If the download does not work:</div>
+      <ol>
+        <li>Click the <strong>…</strong> button.</li>
+        <li>Choose <strong>Download as a file</strong>.</li>
+        <li>Open <strong>This PC</strong> on your computer.</li>
+        <li>Find the downloaded <strong>.hex</strong> file.</li>
+        <li>Drag and drop the <strong>.hex</strong> file into the connected drive, such as <strong>MICROBIT (D:)</strong>.</li>
+      </ol>
+    </div>
+
+    <a href="https://makecode.microbit.org/S59433-13686-04796-14380" target="_blank" class="mc-open-top">
+      Open MakeCode →
+    </a>
+
+    <div class="code-tabs">
+      <button class="tab-btn active" data-lang="blocks" onclick="switchTab('blocks')">🧩 Blocks</button>
+      <button class="tab-btn" data-lang="js" onclick="switchTab('js')">JavaScript</button>
+      <button class="tab-btn" data-lang="python" onclick="switchTab('python')">Python</button>
+    </div>
+
+    <div id="tab-blocks" class="tab-panel">
+      <div class="blocks-ph">
+        <div class="bico">🧩</div>
+        <p>This starter project is a <strong>block-based</strong> MakeCode project.<br>
+           Click <strong>"Open MakeCode"</strong> above to view, edit, and download the blocks to your micro:bit.</p>
+      </div>
+    </div>
+
+    <div id="tab-js" class="tab-panel" style="display:none">
+      <div class="code-box">
+        <button class="copy-btn" data-lang="js" onclick="copyCode('js')">📋 Copy</button>
+        <pre id="jsPre"></pre>
+      </div>
+    </div>
+
+    <div id="tab-python" class="tab-panel" style="display:none">
+      <div class="code-box">
+        <button class="copy-btn" data-lang="python" onclick="copyCode('python')">📋 Copy</button>
+        <pre id="pyPre"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════
+     SETUP
+══════════════════════════════════ -->
+<div id="vSetup" class="view">
+
+  <div class="setup-l">
+    <div class="setup-l-inner">
+      <div class="setup-l-info">
+        <h2>Need an AI Model?</h2>
+        <p>First, train your own AI model in Google Teachable Machine.</p>
+        <a href="https://teachablemachine.withgoogle.com" target="_blank" class="tm-link">
+          Click here to open: Google Teachable Machine
+        </a>
+        <p>After you finish training your model, bring it into this platform.</p>
+      </div>
+      <div class="setup-l-steps">
+        <div class="steps-box">
+          <h3>Follow these 4 steps:</h3>
+          <ol>
+            <li>In Google Teachable Machine, click <strong>"Export Model"</strong></li>
+            <li>Click <strong>"Upload my model"</strong> and wait until it finishes</li>
+            <li>Click <strong>"Copy"</strong> to copy your model link</li>
+            <li>Paste the link into the box below, then click <strong>Ready!</strong></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="setup-r">
+    <div class="setup-r-inner">
+    <h3>Paste your AI model link here:</h3>
+
+    <div class="sf">
+      <input type="text" id="urlInput"
+        placeholder="https://teachablemachine.withgoogle.com/models/XXXXXXXX/" />
+    </div>
+
+    <div class="sf">
+      <label>Model Type</label>
+      <select id="typeSelect">
+        <option value="image">📷 Image</option>
+        <option value="pose">🕺 Pose</option>
+        <option value="audio">🎙️ Audio / Sound</option>
+      </select>
+    </div>
+
+    <div class="setup-row">
+      <label>Choose Camera:</label>
+      <select id="camSel"><option value="">Loading...</option></select>
+    </div>
+
+    <div class="setup-row">
+      <label>Choose Audio:</label>
+      <select id="audioSel"><option value="">Loading...</option></select>
+    </div>
+
+    <div class="err-box" id="errBox"></div>
+
+    <button class="ready-btn" onclick="clickReady()">Ready!</button>
+    </div><!-- /setup-r-inner -->
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════
+     RUNNING
+══════════════════════════════════ -->
+<div id="vRun" class="view">
+
+  <div class="run-nav">
+    <button class="nav-serial" id="serialBtn" onclick="reconnect()">
+      🔌 Connect your Physical Computing Tool
+    </button>
+    <button class="nav-icon" onclick="openMcModal()">Physical AI Basic Code</button>
+    <button class="nav-icon" onclick="goHome()">Home</button>
+  </div>
+
+  <div class="run-body">
+
+    <div class="run-left">
+      <div class="model-lbl" id="modelLbl">IMAGE<br>MODEL</div>
+      <p class="model-desc">
+        The AI checks your camera or microphone input and chooses the best matching class
+        from your AI model that you trained in Google Teachable Machine.
+      </p>
+
+      <div class="results-card">
+        <div class="results-title">RESULTS!</div>
+        <div id="classRows">
+          <div style="color:#94a3b8;font-size:.88rem;padding:.5rem 0">
+            Loading model...
+          </div>
+        </div>
+      </div>
+
+      <button class="reset-btn" onclick="doReset()">Reset AI Recognition</button>
+
+      <div class="thr-row">
+        <span>Send threshold:</span>
+        <input type="range" id="thrSlider" min="0" max="100" value="70"
+          oninput="document.getElementById('thrVal').textContent=this.value+'%'">
+        <span id="thrVal">70%</span>
+        <span style="font-size:.75rem">— only sends to micro:bit above this</span>
+      </div>
+
+      <button class="help-btn" onclick="openHelpModal()">Need any Help?</button>
+    </div>
+
+    <div class="run-right">
+      <div id="camBox">
+        <div class="cam-ph" id="camPh">
+          <div class="ico">📷</div>
+          <p>Camera will appear<br>when AI starts</p>
+        </div>
+      </div>
+      <div id="micBox">
+        <div id="micIco">🎙️</div>
+        <div class="mic-lbl">Listening...</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     HELP OVERLAY
+══════════════════════════════════ -->
+<div id="helpOverlay">
+  <div class="help-modal">
+    <button class="close-btn" onclick="closeHelpModal()">✕</button>
+    <h2>How does it work?</h2>
+    <p style="font-size:.85rem;color:#555;margin-bottom:.3rem">
+      AI systems work just like humans do. Here is how your project comes to life:
+    </p>
+
+    <div class="flow-diagram">
+      <div class="flow-node sense">
+        <div class="fn-icon">👁️</div>
+        <div class="fn-label">SENSE</div>
+        <div class="fn-sub">Camera / Mic</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node think">
+        <div class="fn-icon">🧠</div>
+        <div class="fn-label">THINK</div>
+        <div class="fn-sub">AI Model</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node act">
+        <div class="fn-icon">🤖</div>
+        <div class="fn-label">ACT</div>
+        <div class="fn-sub">LED / Motor</div>
+      </div>
+    </div>
+
+    <div class="hm-steps">
+      <ol>
+        <li><strong>Train</strong> — Go to Google Teachable Machine and train an AI model with your images, poses, or sounds.</li>
+        <li><strong>Build</strong> — Open MakeCode and program your micro:bit to respond to the AI's classification results.</li>
+        <li><strong>Connect</strong> — Paste your model URL here, connect your micro:bit via USB, and watch your Physical AI system come alive!</li>
+      </ol>
+    </div>
+
+    <div class="hm-btns">
+      <a href="https://teachablemachine.withgoogle.com" target="_blank" class="pill-btn step1">
+        Step 1: &nbsp;Train your AI Model
+      </a>
+      <button class="pill-btn step2" onclick="closeHelpModal();openMcModal()">
+        Step 2: &nbsp;Build and create codes of your physical computing tool
+      </button>
+      <button class="pill-btn step3" onclick="closeHelpModal();connectThenSetup()">
+        Step 3: &nbsp;Connect your physical computing tool to your AI model
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+/* ══════════════════════════════════
+   Starter code — JS & Python
+══════════════════════════════════ */
+const JS_CODE = `serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
+    SerialData = serial.readUntil(serial.delimiters(Delimiters.NewLine))
+    // This If statement checks that variable with the class name,
+    // and if it matches the class name you entered, it will activate the code within that block
+    if (SerialData == "Class 1") {
+        basic.showIcon(IconNames.Yes)
+        music.playTone(262, music.beat(BeatFraction.Quarter))
+    } else if (SerialData == "Class 2") {
+        basic.showIcon(IconNames.SmallSquare)
+        music.playTone(330, music.beat(BeatFraction.Quarter))
+    } else if (SerialData == "Class 3") {
+        basic.showIcon(IconNames.Square)
+        music.playTone(392, music.beat(BeatFraction.Quarter))
+    } else {
+
+    }
+})
+let SerialData = ""
+serial.redirectToUSB()`;
+
+const PYTHON_CODE = `def on_data_received():
+    global SerialData
+    SerialData = serial.read_until(serial.delimiters(Delimiters.NEW_LINE))
+    # This If statement checks that variable with the class name,
+    # and if it matches the class name you entered, it will activate the code within that block
+    if SerialData == "Class 1":
+        basic.show_icon(IconNames.YES)
+        music.play_tone(262, music.beat(BeatFraction.QUARTER))
+    elif SerialData == "Class 2":
+        basic.show_icon(IconNames.SMALL_SQUARE)
+        music.play_tone(330, music.beat(BeatFraction.QUARTER))
+    elif SerialData == "Class 3":
+        basic.show_icon(IconNames.SQUARE)
+        music.play_tone(392, music.beat(BeatFraction.QUARTER))
+    else:
+        pass
+serial.on_data_received(serial.delimiters(Delimiters.NEW_LINE), on_data_received)
+
+SerialData = ""
+serial.redirect_to_usb()`;
+
+function openMcModal() {
+  document.getElementById('jsPre').textContent = JS_CODE;
+  document.getElementById('pyPre').textContent = PYTHON_CODE;
+  // reset to Blocks tab
+  switchTab('blocks');
+  document.getElementById('mcOverlay').classList.add('open');
+}
+function closeMcModal() {
+  document.getElementById('mcOverlay').classList.remove('open');
+}
+document.getElementById('mcOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('mcOverlay')) closeMcModal();
+});
+function openHelpModal() {
+  document.getElementById('helpOverlay').classList.add('open');
+}
+function closeHelpModal() {
+  document.getElementById('helpOverlay').classList.remove('open');
+}
+document.getElementById('helpOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('helpOverlay')) closeHelpModal();
+});
+function switchTab(lang) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+  document.querySelector(`.tab-btn[data-lang="${lang}"]`).classList.add('active');
+  document.getElementById(`tab-${lang}`).style.display = '';
+}
+function copyCode(lang) {
+  const code = lang === 'js' ? JS_CODE : PYTHON_CODE;
+  const btn  = document.querySelector(`.copy-btn[data-lang="${lang}"]`);
+  navigator.clipboard.writeText(code)
+    .catch(() => {
+      const t = document.createElement('textarea');
+      t.value = code; document.body.appendChild(t);
+      t.select(); document.execCommand('copy');
+      document.body.removeChild(t);
+    })
+    .finally(() => {
+      if (btn) { btn.textContent = '✅ Copied!'; setTimeout(() => btn.textContent = '📋 Copy', 2000); }
+    });
+}
+
+/* ══════════════════════════════════
+   State
+══════════════════════════════════ */
+let model       = null;
+let audioRecog  = null;
+let mType       = 'image';
+let labels      = [];
+let webcam      = null;
+let isRunning   = false;
+let serialPort  = null;
+let serialWriter= null;
+let lastSend    = 0;
+const SEND_MS   = 300;
+
+/* ══════════════════════════════════
+   View helpers
+══════════════════════════════════ */
+function show(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function goHome() {
+  stopAll();
+  show('vHome');
+}
+
+/* ══════════════════════════════════
+   Serial
+══════════════════════════════════ */
+async function connectSerial() {
+  if (!('serial' in navigator)) return false;
+  try {
+    serialPort   = await navigator.serial.requestPort();
+    await serialPort.open({ baudRate: 115200 });
+    serialWriter = serialPort.writable.getWriter();
+    return true;
+  } catch(e) {
+    if (e.name !== 'NotFoundError') console.warn('Serial:', e.message);
+    return false;
+  }
+}
+async function reconnect() {
+  if (serialWriter) { try { serialWriter.releaseLock(); } catch(_){} serialWriter = null; }
+  if (serialPort)   { try { await serialPort.close(); }   catch(_){} serialPort   = null; }
+  const btn = document.getElementById('serialBtn');
+  btn.textContent = '🔌 Connect your Physical Computing Tool';
+  btn.classList.remove('ok');
+  const ok = await connectSerial();
+  if (ok) {
+    btn.textContent = '✅ Physical Computing Tool Connected';
+    btn.classList.add('ok');
+  }
+}
+async function sendSerial(label) {
+  if (serialWriter) {
+    try { await serialWriter.write(new TextEncoder().encode(label + '\n')); }
+    catch(e) { console.warn('Send error:', e); }
+  }
+}
+
+/* ══════════════════════════════════
+   Home → connect → setup
+══════════════════════════════════ */
+async function connectThenSetup() {
+  if ('serial' in navigator) {
+    const ok = await connectSerial();
+    if (ok) {
+      // will update button when we reach run view
+    }
+  }
+  show('vSetup');
+  await enumDevices();
+}
+
+/* ══════════════════════════════════
+   Enumerate devices
+══════════════════════════════════ */
+async function enumDevices() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    const devices = await navigator.mediaDevices.enumerateDevices(); // enumerate while stream is active → labels available
+    stream.getTracks().forEach(t => t.stop());
+    const cams  = devices.filter(d => d.kind === 'videoinput');
+    const mics  = devices.filter(d => d.kind === 'audioinput');
+
+    const cs = document.getElementById('camSel');
+    const as = document.getElementById('audioSel');
+    cs.innerHTML = '';
+    as.innerHTML = '';
+    cams.forEach((c,i) => {
+      const o = new Option(c.label || `Camera ${i+1}`, c.deviceId);
+      cs.appendChild(o);
+    });
+    mics.forEach((m,i) => {
+      const o = new Option(m.label || `Microphone ${i+1}`, m.deviceId);
+      as.appendChild(o);
+    });
+  } catch(e) {
+    document.getElementById('camSel').innerHTML  = '<option value="">Permission denied</option>';
+    document.getElementById('audioSel').innerHTML = '<option value="">Permission denied</option>';
+  }
+}
+
+/* ══════════════════════════════════
+   Setup → Ready
+══════════════════════════════════ */
+async function clickReady() {
+  const url   = document.getElementById('urlInput').value.trim();
+  const errEl = document.getElementById('errBox');
+  errEl.style.display = 'none';
+
+  if (!url) {
+    errEl.textContent = 'Please enter a model URL.';
+    errEl.style.display = 'block'; return;
+  }
+
+  mType = document.getElementById('typeSelect').value;
+  const base = url.endsWith('/') ? url : url + '/';
+
+  // Switch to run view with loading state
+  show('vRun');
+  updateModelLabel();
+
+  // Update serial button if already connected
+  if (serialWriter) {
+    const btn = document.getElementById('serialBtn');
+    btn.textContent = '✅ Physical Computing Tool Connected';
+    btn.classList.add('ok');
+  }
+
+  document.getElementById('classRows').innerHTML =
+    '<div style="color:#94a3b8;font-size:.88rem">Loading model…</div>';
+
+  try {
+    // Auto-detect model type from metadata.json (TM stores type as 'image','pose','sound')
+    try {
+      const meta = await fetch(base + 'metadata.json').then(r => r.json());
+      if (meta && meta.type) {
+        const detected = meta.type === 'sound' ? 'audio' : meta.type;
+        if (['image', 'pose', 'audio'].includes(detected)) {
+          mType = detected;
+          document.getElementById('typeSelect').value = mType;
+          updateModelLabel();
+        }
+      }
+    } catch(_) { /* use user-selected type if metadata unavailable */ }
+
+    if (mType === 'audio') {
+      audioRecog = await speechCommands.create(
+        'BROWSER_FFT', undefined, base+'model.json', base+'metadata.json');
+      await audioRecog.ensureModelLoaded();
+      model  = audioRecog;
+      labels = audioRecog.wordLabels();
+    } else if (mType === 'pose') {
+      model  = await tmPose.load(base+'model.json', base+'metadata.json');
+      labels = model.getClassLabels();
+    } else {
+      model  = await tmImage.load(base+'model.json', base+'metadata.json');
+      labels = model.getClassLabels();
+    }
+
+    buildRows(labels);
+    await startAI();
+
+  } catch(e) {
+    document.getElementById('classRows').innerHTML =
+      `<div style="color:#ef4444;font-size:.88rem;font-weight:700">
+        ❌ Failed to load model:<br>${e.message}
+      </div>`;
+    console.error(e);
+  }
+}
+
+function updateModelLabel() {
+  const map = { image:'IMAGE\nMODEL', pose:'POSE\nMODEL', audio:'AUDIO\nMODEL' };
+  document.getElementById('modelLbl').innerText = map[mType] || 'AI\nMODEL';
+}
+
+/* ══════════════════════════════════
+   Build class result rows
+══════════════════════════════════ */
+function buildRows(lbls) {
+  const cont = document.getElementById('classRows');
+  cont.innerHTML = '';
+  lbls.forEach((name, i) => {
+    const row = document.createElement('div');
+    row.className = 'class-row';
+    row.innerHTML = `
+      <span class="class-num">${i+1}</span>
+      <div class="bar-wrap">
+        <div class="bar-track">
+          <div class="bar-fill lose" id="fill_${i}">
+            <span class="bar-pct" id="pct_${i}"></span>
+          </div>
+        </div>
+      </div>
+      <span class="chk" id="chk_${i}">✓</span>`;
+    cont.appendChild(row);
+    const lbl = document.createElement('div');
+    lbl.className = 'bar-name';
+    lbl.textContent = name;
+    cont.appendChild(lbl);
+  });
+}
+
+/* ══════════════════════════════════
+   Update predictions — called every frame
+══════════════════════════════════ */
+function updatePreds(predictions) {
+  let maxI = 0, maxP = -1;
+  predictions.forEach((p, i) => {
+    const prob = p.probability ?? Number(p);
+    if (prob > maxP) { maxP = prob; maxI = i; }
+  });
+
+  predictions.forEach((p, i) => {
+    const prob = p.probability ?? Number(p);
+    const pct  = Math.round(prob * 100);
+    const isW  = (i === maxI);
+
+    const fill = document.getElementById(`fill_${i}`);
+    const pctEl= document.getElementById(`pct_${i}`);
+    const chk  = document.getElementById(`chk_${i}`);
+    if (!fill) return;
+
+    fill.style.width = pct + '%';
+    fill.className   = `bar-fill ${isW ? 'win' : 'lose'}`;
+    if (pctEl) pctEl.textContent = pct > 5 ? pct + '%' : '';
+    if (chk)   chk.className = `chk ${isW ? 'on' : ''}`;
+  });
+
+  // Serial send (throttled): send winning class name only
+  const thr = parseInt(document.getElementById('thrSlider').value);
+  const now  = Date.now();
+  if (now - lastSend >= SEND_MS) {
+    lastSend = now;
+    const winPct   = Math.round(maxP * 100);
+    const winLabel = predictions[maxI]?.className ?? labels[maxI] ?? `Class ${maxI+1}`;
+    sendSerial(winPct >= thr ? winLabel : 'none');
+  }
+}
+
+/* ══════════════════════════════════
+   Start AI
+══════════════════════════════════ */
+async function startAI() {
+  isRunning = true;
+
+  if (mType === 'audio') {
+    document.getElementById('camBox').style.display = 'none';
+    document.getElementById('micBox').style.display = 'flex';
+    startAudio();
+  } else {
+    document.getElementById('camBox').style.display = '';
+    document.getElementById('micBox').style.display = 'none';
+    await startWebcam();
+  }
+}
+
+/* ── Webcam (Image / Pose) ── */
+async function startWebcam() {
+  const box    = document.getElementById('camBox');
+  const camId  = document.getElementById('camSel')?.value || '';
+
+  // Clear placeholder
+  box.innerHTML = '';
+
+  try {
+    webcam = new tmImage.Webcam(500, 500, true); // w, h, flip=mirror
+    const constraints = camId ? { deviceId: camId } : {};
+    await webcam.setup(constraints);
+    await webcam.play();
+  } catch(e) {
+    box.innerHTML = `<div class="cam-ph">
+      <div class="ico">❌</div>
+      <p>Camera error: ${e.message}<br><br>
+      Open via Live Server / HTTPS and allow camera access.</p></div>`;
+    return;
+  }
+
+  // Scale the small canvas up to fill the display box via CSS
+  webcam.canvas.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+  box.appendChild(webcam.canvas);
+
+  // Status overlay (hidden once predictions start)
+  const statusEl = document.createElement('div');
+  statusEl.style.cssText = 'position:absolute;bottom:8px;left:10px;color:rgba(255,255,255,.7);font-size:.75rem;font-weight:700;pointer-events:none';
+  statusEl.textContent = 'Starting AI...';
+  box.style.position = 'relative';
+  box.appendChild(statusEl);
+
+  const ctx = webcam.canvas.getContext('2d');
+  let frameCount = 0;
+
+  // ── Prediction loop — exact TM pattern ──
+  async function loop() {
+    if (!isRunning) return;
+
+    webcam.update(); // renders current video frame onto webcam.canvas
+
+    try {
+      let preds;
+
+      if (mType === 'pose') {
+        const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
+        preds = await model.predict(posenetOutput);
+        updatePreds(preds); // update bars first — drawing errors won't block this
+        if (pose && pose.keypoints && ctx) {
+          tmPose.drawKeypoints(pose.keypoints, 0.5, ctx);  // tmPose module, not model
+          tmPose.drawSkeleton(pose.keypoints, 0.5, ctx);
+        }
+      } else {
+        // image model — pass the webcam canvas directly
+        preds = await model.predict(webcam.canvas);
+        updatePreds(preds);
+      }
+
+      // Show live confidence in status overlay
+      frameCount++;
+      if (frameCount === 1) statusEl.textContent = ''; // predictions running
+      const top = preds.reduce((a, b) => (b.probability > a.probability ? b : a));
+      statusEl.textContent = `${top.className}: ${Math.round(top.probability * 100)}%`;
+
+    } catch(err) {
+      statusEl.textContent = '⚠ ' + err.message;
+      console.error('Prediction error:', err);
+    }
+
+    if (isRunning) window.requestAnimationFrame(loop);
+  }
+
+  window.requestAnimationFrame(loop); // start loop (matches TM official pattern)
+}
+
+/* ── Audio ── */
+async function startAudio() {
+  await audioRecog.listen(result => {
+    if (!isRunning) return;
+    const scores = Array.from(result.scores);
+    const preds  = labels.map((name, i) => ({ className: name, probability: scores[i] || 0 }));
+    updatePreds(preds);
+    const mx   = Math.max(...scores);
+    const icon = document.getElementById('micIco');
+    if (icon) {
+      icon.style.transform = `scale(${0.85 + 0.45 * mx})`;
+      icon.style.opacity   = String(0.3 + 0.7 * mx);
+    }
+  }, {
+    includeSpectrogram: false,
+    probabilityThreshold: 0.0,
+    invokeCallbackOnNoiseAndUnknown: true,
+    overlapFactor: 0.5
+  });
+}
+
+/* ══════════════════════════════════
+   Stop / Reset
+══════════════════════════════════ */
+function stopAll() {
+  isRunning = false;
+  if (audioRecog) { try { audioRecog.stopListening(); } catch(_){} }
+  if (webcam)     { try { webcam.stop(); } catch(_){} webcam = null; }
+}
+
+function doReset() {
+  stopAll();
+  labels.forEach((_, i) => {
+    const fill = document.getElementById(`fill_${i}`);
+    const pctEl= document.getElementById(`pct_${i}`);
+    const chk  = document.getElementById(`chk_${i}`);
+    if (fill)  { fill.style.width = '0%'; fill.className = 'bar-fill lose'; }
+    if (pctEl) pctEl.textContent = '';
+    if (chk)   chk.className = 'chk';
+  });
+  document.getElementById('camBox').innerHTML =
+    `<div class="cam-ph" id="camPh"><div class="ico">📷</div><p>Restarting...</p></div>`;
+  setTimeout(() => startAI(), 400);
+}
+</script>
+</body>
+</html>
